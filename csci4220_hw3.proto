@@ -1,0 +1,72 @@
+// Copyright 2015 gRPC authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+// Kadmelia implementation for CSCI-4220
+service KadImpl {
+  // Takes an ID (use shared IDKey message type) and returns k nodes with
+  // distance closest to ID requested
+  rpc FindNode(IDKey) returns (NodeList) {}
+
+  // Complicated - we might get a value back, or we might get k nodes with
+  // distance closest to key requested
+  rpc FindValue(IDKey) returns (KV_Node_Wrapper) {}
+
+  // Store the value at the given node. Need to return *something*, but client
+  // does not use this return value.
+  rpc Store(KeyValue) returns (IDKey) {}
+
+  // Notify a remote node that the node with ID in IDKey is quitting the
+  // network and should be removed from the remote node's k-buckets. Client
+  // does not use this return value.
+  rpc Quit(IDKey) returns (IDKey) {}
+}
+
+// represents a Node. 
+message Node{
+  uint32 id = 1;
+  uint32 port = 2;
+  string address =3;
+} 
+
+// Request messages will include Node so that we can update our k-buckets, 
+// response messages need this since despite running TCP we don't know
+// a remote node's ID if they contact us first / if we are BOOTSTRAP-ing
+// nodes expects to be a list
+message NodeList{
+  Node responding_node = 1;
+  repeated Node nodes = 2;
+}
+
+// represents an ID or a key
+message IDKey{
+  Node node = 1;
+  uint32 idkey = 2;
+}
+
+// Key and value pair. value cannot be longer than 2^32 bytes
+message KeyValue{
+  Node node = 1;
+  uint32 key = 2;
+  string value = 3;
+}
+
+// If mode_kv is True then only read from kv, otherwise only read from nodes
+message KV_Node_Wrapper{
+  Node responding_node = 1;
+  bool mode_kv = 2;
+  KeyValue kv = 3;
+  repeated Node nodes = 4;
+}
