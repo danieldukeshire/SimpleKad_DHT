@@ -24,6 +24,20 @@ import csci4220_hw3_pb2_grpc
 N = 4                                   # The maximum number of buckets (N) is 4
 buckets = [[]] * N                      # The k_buckets array
 
+class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
+    def FindNode(self, request, context):
+        print("To be implemented")
+
+    def FindValue(self, request, context):
+        print("To be implemented")
+
+    def Store(self, request, context):
+        print("To be implemented")
+
+    def Quit(self, request, context):
+        print("To be implemented")
+
+
 # gatherCommandLine()
 # reads-in input from the command-line in the form of:
 # <nodeID> <portnum> <k>
@@ -39,11 +53,19 @@ def gatherCommandLine():
     local_id = int(sys.argv[1])
     my_port = str(int(sys.argv[2]))                  # add_insecure_port() will want a string
     k = int(sys.argv[3])
-    my_hostname = socket.gethostname()               # Gets my host name
+
+    #my_hostname = socket.gethostname()               # Gets my host name
+    my_hostname = "127.0.0.1"
+    print(my_hostname)
     my_address = socket.gethostbyname(my_hostname)   # Gets my IP address from my hostname
 
 def connectionListen():
-    print("gRPC server starting at: {}".format(my_address+':'+my_port))
+    print("Hi")
+    threadServer= grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    print("Hi2")
+    #csci4220_hw3_pb2_grpc.add_KadImplServicer_to_server(KadImpl(), threadServer)
+    print("Hi3")
+    #threadServer.add_insecure_port(my_address+':'+my_port).start()
 
 # main
 if __name__ == '__main__':
