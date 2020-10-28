@@ -15,10 +15,11 @@ import socket
 import grpc
 import time
 import select
-import queue as queue
+import queue as Queue
 import threading
 import csci4220_hw3_pb2
 import csci4220_hw3_pb2_grpc
+_ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 # Some global variables
 N = 4                                   # The maximum number of buckets (N) is 4
@@ -59,16 +60,25 @@ def gatherCommandLine():
     print(my_hostname)
     my_address = socket.gethostbyname(my_hostname)   # Gets my IP address from my hostname
 
-def connectionListen():
-    print("Hi")
-    threadServer= grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    print("Hi2")
-    #csci4220_hw3_pb2_grpc.add_KadImplServicer_to_server(KadImpl(), threadServer)
-    print("Hi3")
-    #threadServer.add_insecure_port(my_address+':'+my_port).start()
+def listenForConnections():
+	print("gRPC server starting at: {}".format(my_address+':'+my_port))
+	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+
+
+	csci4220_hw4_pb2_grpc.add_KadImplServicer_to_server(KadImpl(), server)
+
+	server.add_insecure_port(my_address + ':' + my_port)
+
+	server.start()
+
+	try:
+	    while True:
+	        time.sleep(_ONE_DAY_IN_SECONDS)
+	except KeyboardInterrupt:
+	    server.stop(0)
 
 # main
 if __name__ == '__main__':
     gatherCommandLine()
-    server = threading.Thread(target = connectionListen)    # server thread, so we can simultaniously do ....
+    server = threading.Thread(target = listenForConnections)    # server thread, so we can simultaniously do ....
     server.start()
