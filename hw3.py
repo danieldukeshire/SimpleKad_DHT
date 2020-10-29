@@ -25,22 +25,6 @@ buckets = [[]] * N                      # The k_buckets array
 _ONE_DAY_IN_SECONDS = 86400
 
 # Server-side ---------------------------------------------------------------------------
-
-# server
-#
-#
-def server():
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))            # Creates a server with a max 10
-    csci4220_hw3_pb2_grpc.add_KadImplServicer_to_server(KadImpl(), server)      # Passes the server to the grpc
-    server.add_insecure_port(my_address + ':' + my_port)                        # Adds the port
-    server.start()
-
-    try:
-        while True:
-            time.sleep(_ONE_DAY_IN_SECONDS)
-    except KeyboardInterrupt:
-        server.stop(0)
-
 # class KadImpl()
 # Provides methods that implement functionality of KadImplServer.
 # Is called by the store, bootstrap, findvalue, and findnode from
@@ -58,8 +42,22 @@ class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
     def Quit(self, request, context):
         print("To be implemented")
 
-# Client-side -----------------------------------------------------------------------------
+# server
+#
+#
+def server():
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))            # Creates a server with a max 10
+    csci4220_hw3_pb2_grpc.add_KadImplServicer_to_server(KadImpl(), server)      # Passes the server to the grpc
+    server.add_insecure_port(my_address + ':' + my_port)                        # Adds the port
+    server.start()
 
+    try:
+        while True:
+            time.sleep(_ONE_DAY_IN_SECONDS)
+    except KeyboardInterrupt:
+        server.stop(0)
+
+# Client-side -----------------------------------------------------------------------------
 # store()
 # Takes input: the input string from the console
 #
@@ -98,6 +96,7 @@ def quit(input):
 # run()
 # reads-in input from the command-line in the form of:
 # <nodeID> <portnum> <k>
+# and proceeds to read input from stdin
 def run():
     if len(sys.argv) != 4:                              # Some error checking
         print("Error, correct usage is {} [my id] [my port] [k]".format(sys.argv[0]))
@@ -116,19 +115,12 @@ def run():
     print(my_hostname)
     my_address = socket.gethostbyname(my_hostname)      # Gets my IP address from my hostname
 
-    threading.Thread(target = server).start()           # server thread, so we can simultaniously do ....
-    client()                                            # client(), to deal with commands on this end
-
-# client()
-# Reads in from the terminal, acting as a "client" and passes the input
-# to the client functions
-def client():
     while(True):
         buf = input()
         print("MAIN: Received from stdin: " + buf)
         if buf == "STORE":                              # Passes to store function
             store(buf)
-        elif buf == "BOOTSTRAP":                         # Passes to bootstrap function
+        elif buf == "BOOTSTRAP":                        # Passes to bootstrap function
             bootStrap(buf)
         elif buf == "FIND_VALUE":                       # Passes to find_value function
             findValue(buf)
@@ -143,6 +135,7 @@ def client():
 # main
 # Gathers input from the command line, stores in global variables
 # Threads off a server to simultaniously work alongside the client
-# The client works through gatherinput
+# The client works through run()
 if __name__ == '__main__':
+    threading.Thread(target = server).start()           # server thread, so we can simultaniously do ....
     run()
