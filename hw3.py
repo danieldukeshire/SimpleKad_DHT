@@ -33,7 +33,17 @@ class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
         print("To be implemented")
 
     def Store(self, request, context):
-        print("To be implemented")
+        node = request.node
+        id_request = node.id
+        address_request = node.address
+        port_request = node.port
+        print("Recieved store request from id:{}, port:{}, address:{}".format(id_request, address_request, port_request))
+
+        key_request = request.key
+        val_request = request.value
+        print("Storing key {} value {}".format(key_request, val_request))
+
+        #implement storePair
 
     def Quit(self, request, context):
         print("To be implemented")
