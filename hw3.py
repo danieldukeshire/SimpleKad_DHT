@@ -22,25 +22,24 @@ import csci4220_hw3_pb2_grpc
 # Some global variables
 N = 4                                   # The maximum number of buckets (N) is 4
 buckets = [[]] * N                      # The k_buckets array
+_ONE_DAY_IN_SECONDS = 86400
 
 # Server-side ---------------------------------------------------------------------------
 
+# server
 #
 #
-#
-def serve():
-    print("gRPC server starting at: {}".format(my_address+':'+my_port))
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    csci4220_hw3_pb2_grpc.add_KadImplServicer_to_server(KadImpl(), server)
-    server.add_insecure_port(my_address + ':' + my_port)
+def server():
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))            # Creates a server with a max 10
+    csci4220_hw3_pb2_grpc.add_KadImplServicer_to_server(KadImpl(), server)      # Passes the server to the grpc
+    server.add_insecure_port(my_address + ':' + my_port)                        # Adds the port
     server.start()
 
     try:
         while True:
-            time.sleep(60)
+            time.sleep(_ONE_DAY_IN_SECONDS)
     except KeyboardInterrupt:
-        server.stop()
-        sys.exit()
+        server.stop(0)
 
 # class KadImpl()
 # Provides methods that implement functionality of KadImplServer.
@@ -117,8 +116,8 @@ def run():
     print(my_hostname)
     my_address = socket.gethostbyname(my_hostname)      # Gets my IP address from my hostname
 
-    threading.Thread(target = serve).start()            # server thread, so we can simultaniously do ....
-    client()
+    threading.Thread(target = server).start()           # server thread, so we can simultaniously do ....
+    client()                                            # client(), to deal with commands on this end
 
 # client()
 # Reads in from the terminal, acting as a "client" and passes the input
