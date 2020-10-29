@@ -65,37 +65,42 @@ class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
 # Takes input: the input string from the console
 #
 def store(input):
+    print("STORE")
     print(input)
 
 # bootStrap()
 # Takes input: the input string from the console
 #
 def bootStrap(input):
+    print("BOOSTRAP")
     print(input)
 
 # findValue()
 # Takes input: the input string from the console
 #
 def findValue(input):
+    print("FINDVALUE")
     print(input)
 
 # findNode()
 # Takes input: the input string from the console
 #
 def findNode(input):
+    print("FINDNODE")
     print(input)
 
 # quit()
 # Takes input: the input string from the console
 #
 def quit(input):
+    print("QUIT")
     print(input)
 
 # run()
 # reads-in input from the command-line in the form of:
 # <nodeID> <portnum> <k>
 def run():
-    if len(sys.argv) != 4:                          # Some error checking
+    if len(sys.argv) != 4:                              # Some error checking
         print("Error, correct usage is {} [my id] [my port] [k]".format(sys.argv[0]))
         sys.exit(-1)
     global local_id
@@ -112,7 +117,7 @@ def run():
     print(my_hostname)
     my_address = socket.gethostbyname(my_hostname)      # Gets my IP address from my hostname
 
-    threading.Thread(target = serve).start()    # server thread, so we can simultaniously do ....
+    threading.Thread(target = serve).start()            # server thread, so we can simultaniously do ....
     client()
 
 # client()
@@ -122,15 +127,15 @@ def client():
     while(True):
         buf = input()
         print("MAIN: Received from stdin: " + buf)
-        if buf == "STORE\n":                            # Passes to store function
+        if buf == "STORE":                              # Passes to store function
             store(buf)
-        elif buf == "BOOSTRAP\n":                       # Passes to bootstrap function
+        elif buf == "BOOTSTRAP":                         # Passes to bootstrap function
             bootStrap(buf)
-        elif buf == "FIND_VALUE\n":                     # Passes to find_value function
+        elif buf == "FIND_VALUE":                       # Passes to find_value function
             findValue(buf)
-        elif buf == "FIND_NODE\n":                      # Passes to find_node function
+        elif buf == "FIND_NODE":                        # Passes to find_node function
             findNode(buf)
-        elif buf == "QUIT\n":                           # Terminates the function
+        elif buf == "QUIT":                             # Terminates the function
             quit(buf)
             sys.exit()
         else:                                           # Otherwise... keep looping and print the following
