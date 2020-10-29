@@ -60,25 +60,22 @@ def gatherCommandLine():
     print(my_hostname)
     my_address = socket.gethostbyname(my_hostname)   # Gets my IP address from my hostname
 
-def listenForConnections():
-	print("gRPC server starting at: {}".format(my_address+':'+my_port))
-	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+def serve():
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    csci4220_hw3_pb2_grpc.add_KadImplServicer_to_server(KadImpl(), server)
+    server.add_insecure_port(my_address + ':' + my_port)
+    server.start()
+    try:
+        while True:
+            time.sleep(_ONE_DAY_IN_SECONDS)
+    except KeyboardInterrupt:
+        server.stop(0)
 
 
-	csci4220_hw4_pb2_grpc.add_KadImplServicer_to_server(KadImpl(), server)
 
-	server.add_insecure_port(my_address + ':' + my_port)
-
-	server.start()
-
-	try:
-	    while True:
-	        time.sleep(_ONE_DAY_IN_SECONDS)
-	except KeyboardInterrupt:
-	    server.stop(0)
 
 # main
 if __name__ == '__main__':
     gatherCommandLine()
-    server = threading.Thread(target = listenForConnections)    # server thread, so we can simultaniously do ....
-    server.start()
+    s = threading.Thread(target = serve)    # server thread, so we can simultaniously do ....
+    s.start()
