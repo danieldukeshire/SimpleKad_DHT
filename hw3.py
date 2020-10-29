@@ -21,8 +21,12 @@ import csci4220_hw3_pb2_grpc
 
 # Some global variables
 N = 4                                   # The maximum number of buckets (N) is 4
-buckets = [[]] * N                      # The k_buckets array
+k_buckets = [[]] * N                    # The k_buckets array: N buckets of size k
 _ONE_DAY_IN_SECONDS = 86400
+local_id = None
+my_port = None
+my_hostname = None
+my_address = None
 
 # Server-side ---------------------------------------------------------------------------
 # class KadImpl()
@@ -31,7 +35,18 @@ _ONE_DAY_IN_SECONDS = 86400
 # other client/servers
 class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
     def FindNode(self, request, context):
-        print("To be implemented")
+        # Getting values from the client request
+        node = request.node
+        id_request = node.id
+        address_request = node.address
+        port_request = node.port
+        id_target = node.idkey
+
+        closest_nodes = findClosestNodes(id_target)                             # determines the closest nodes
+
+        str = "Serving FindNode(" + id_target + ") request for " + id_request   # String formatting for output
+        print(str)                                                              # Prints to remote client
+
 
     def FindValue(self, request, context):
         print("To be implemented")
@@ -55,7 +70,7 @@ class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
 # server
 #
 #
-def server():
+def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))            # Creates a server with a max 10
     csci4220_hw3_pb2_grpc.add_KadImplServicer_to_server(KadImpl(), server)      # Passes the server to the grpc
     server.add_insecure_port(my_address + ':' + my_port)                        # Adds the port
@@ -78,9 +93,14 @@ def store(input):
 # bootStrap()
 # Takes input: the input string from the console
 #
-def bootStrap(input):
-    print("BOOSTRAP")
-    print(input)
+def bootStrap(input, my_hostname, my_address):
+    hostname = input.split()[1]                             # Gettting the hostname from input
+    port = input.split()[2]                                 # Getting the port from input
+    address = socket.gethostbyname(hostname)                # Getting the hostname
+
+    channel = grpc.insecure_channel(address + ':' + port)   # Establishing an insecure channel
+    stub = csci4220_hw3_pb2_grpc.KadImplStub(channel)       # Using the gRPC API in "stub"
+    z = stub.FindNode(csci4220_hw3_pb2.IDKey(node = csci4220_hw3_pb2.Node( id = local_id, port = int(my_port), address = my_address), idkey = local_id))
 
 # findValue()
 # Takes input: the input string from the console
@@ -102,6 +122,7 @@ def findNode(input):
 def quit(input):
     print("QUIT")
     print(input)
+    print("Shut down node {}".format(local_id))
 
 # run()
 # reads-in input from the command-line in the form of:
@@ -122,21 +143,20 @@ def run():
 
     #my_hostname = socket.gethostname()                 # Gets my host name
     my_hostname = "127.0.0.1"
-    print(my_hostname)
     my_address = socket.gethostbyname(my_hostname)      # Gets my IP address from my hostname
 
     while(True):
         buf = input()
         print("MAIN: Received from stdin: " + buf)
-        if buf == "STORE":                              # Passes to store function
+        if "STORE" in buf:                              # Passes to store function
             store(buf)
-        elif buf == "BOOTSTRAP":                        # Passes to bootstrap function
-            bootStrap(buf)
-        elif buf == "FIND_VALUE":                       # Passes to find_value function
+        elif "BOOTSTRAP" in buf:                        # Passes to bootstrap function
+            bootStrap(buf, my_hostname, my_address)
+        elif "FIND_VALUE" in buf:                       # Passes to find_value function
             findValue(buf)
-        elif buf == "FIND_NODE":                        # Passes to find_node function
+        elif "FIND_NODE" in buf:                        # Passes to find_node function
             findNode(buf)
-        elif buf == "QUIT":                             # Terminates the function
+        elif "QUIT" in buf:                             # Terminates the function
             quit(buf)
             sys.exit()
         else:                                           # Otherwise... keep looping and print the following
@@ -147,5 +167,5 @@ def run():
 # Threads off a server to simultaniously work alongside the client
 # The client works through run()
 if __name__ == '__main__':
-    threading.Thread(target = server).start()           # server thread, so we can simultaniously do ....
+    threading.Thread(target = serve).start()            # server thread, so we can simultaniously do ....
     run()
