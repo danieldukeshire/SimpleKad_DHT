@@ -8,8 +8,8 @@ import select
 import queue as Queue
 import grpc
 
-import csci4220_hw4_pb2
-import csci4220_hw4_pb2_grpc
+import csci4220_hw3_pb2
+import csci4220_hw3_pb2_grpc
 import threading
 import time
 
@@ -31,7 +31,7 @@ node_value = None
 #     self.address = address
 #     self.port = port
 
-class KadImpl(csci4220_hw4_pb2_grpc.KadImplServicer):
+class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
 	# Takes an IDKey and returns k nodes with distance closest to ID requested
 	def FindNode(self, request, context):
 		request_id = request.node.id
@@ -41,21 +41,21 @@ class KadImpl(csci4220_hw4_pb2_grpc.KadImplServicer):
 
 		print("Serving FindNode({}) request for {}".format(target_id,request_id))
 
-		exclude_nodes = [csci4220_hw4_pb2.Node(id=local_id, port=int(my_port), address=my_address)]
+		exclude_nodes = [csci4220_hw3_pb2.Node(id=local_id, port=int(my_port), address=my_address)]
 		k_closest_nodes = getKClosestNodesToTargetNode(target_id, exclude_nodes)
 
-		new_node = csci4220_hw4_pb2.Node(id=request_id, port=request_port, address=request_address)
+		new_node = csci4220_hw3_pb2.Node(id=request_id, port=request_port, address=request_address)
 		storeNodeInKBuckets(new_node)
 
 		k_bucket_str = formatKBucketString()
 		print("k_bucket_str:\n" + k_bucket_str)
 
-		return csci4220_hw4_pb2.NodeList(
-			responding_node = csci4220_hw4_pb2.Node(
-				id = local_id,
-				port = int(my_port),
-				address = my_address),
-			nodes = k_closest_nodes)
+		return csci4220_hw3_pb2.NodeList(
+			responding_node=csci4220_hw3_pb2.Node(
+				id=local_id,
+				port=int(my_port),
+				address=my_address),
+			nodes=k_closest_nodes)
 
 	# Takes an IDKey
 	# If mode_kv is true, then read value returned by kv
@@ -69,14 +69,14 @@ class KadImpl(csci4220_hw4_pb2_grpc.KadImplServicer):
 		print("Serving FindKey({}) request for {}".format(key,request_id))
 
 		if node_key == key:
-			return csci4220_hw4_pb2.KV_Node_Wrapper(
-				responding_node = csci4220_hw4_pb2.Node(
+			return csci4220_hw3_pb2.KV_Node_Wrapper(
+				responding_node = csci4220_hw3_pb2.Node(
 					id = local_id,
 					port = int(my_port),
 					address = my_address),
 				mode_kv = True,
-				kv = csci4220_hw4_pb2.KeyValue(
-					node = csci4220_hw4_pb2.Node(
+				kv = csci4220_hw3_pb2.KeyValue(
+					node = csci4220_hw3_pb2.Node(
 						id = local_id,
 						port = int(my_port),
 						address = my_address),
@@ -84,24 +84,24 @@ class KadImpl(csci4220_hw4_pb2_grpc.KadImplServicer):
 					value = node_value),
 				nodes = [])
 		else:
-			exclude_nodes = [csci4220_hw4_pb2.Node(id=local_id, port=int(my_port), address=my_address)]
+			exclude_nodes = [csci4220_hw3_pb2.Node(id=local_id, port=int(my_port), address=my_address)]
 			print("Nodes to exclude: " + str(exclude_nodes))
 			k_closest_nodes = getKClosestNodesToTargetNode(key, exclude_nodes)
 			# print("k_closest_nodes: " + str(k_closest_nodes))
-			return csci4220_hw4_pb2.KV_Node_Wrapper(
-				responding_node = csci4220_hw4_pb2.Node(
-					id = local_id,
-					port = int(my_port),
-					address = my_address),
-				mode_kv = False,
-				kv = csci4220_hw4_pb2.KeyValue(
-					node = csci4220_hw4_pb2.Node(
-						id = local_id,
-						port = int(my_port),
-						address = my_address),
-					key = None,
-					value = None),
-				nodes = k_closest_nodes)
+			return csci4220_hw3_pb2.KV_Node_Wrapper(
+				responding_node=csci4220_hw3_pb2.Node(
+					id=local_id,
+					port=int(my_port),
+					address=my_address),
+				mode_kv=False,
+				kv=csci4220_hw3_pb2.KeyValue(
+					node=csci4220_hw3_pb2.Node(
+						id=local_id,
+						port=int(my_port),
+						address=my_address),
+					key=None,
+					value=None),
+				nodes=k_closest_nodes)
 
 	# Takes a KeyValue
 	# Stores the value at the given node
@@ -114,12 +114,12 @@ class KadImpl(csci4220_hw4_pb2_grpc.KadImplServicer):
 		print("Storing key {} value {}".format(request.key, request.value))
 		storeKeyValuePair(request.key, request.value)
 
-		return csci4220_hw4_pb2.IDKey(
-			node = csci4220_hw4_pb2.Node(
-				id = local_id,
-				port = int(my_port),
-				address = my_address),
-			idkey = idkey_idkey)
+		return csci4220_hw3_pb2.IDKey(
+			node=csci4220_hw3_pb2.Node(
+				id=local_id,
+				port=int(my_port),
+				address=my_address),
+			idkey=idkey_idkey)
 
 	# Takes an IDKey
 	# Notifies remote node that the node with the ID in IDKey is quitting the network
@@ -149,8 +149,8 @@ class KadImpl(csci4220_hw4_pb2_grpc.KadImplServicer):
 		else:
 			print("No record of quitting node {} in k-buckets.".format(request_id))
 
-		return csci4220_hw4_pb2.IDKey(
-			node = csci4220_hw4_pb2.Node(
+		return csci4220_hw3_pb2.IDKey(
+			node = csci4220_hw3_pb2.Node(
 				id = local_id,
 				port = int(my_port),
 				address = my_address),
@@ -275,9 +275,9 @@ def handleBootstrapMSG(buffer):
 	print("remote_hostname: {}, remote_addr: {}, remote_port: {}".format(remote_hostname, remote_addr, remote_port))
 	#need to establish an insecure channel
 	channel = grpc.insecure_channel(remote_addr + ':' + remote_port)
-	stub = csci4220_hw4_pb2_grpc.KadImplStub(channel)
+	stub = csci4220_hw3_pb2_grpc.KadImplStub(channel)
 
-	response = stub.FindNode(csci4220_hw4_pb2.IDKey(node=csci4220_hw4_pb2.Node(id=local_id,port=int(my_port),address=my_address)
+	response = stub.FindNode(csci4220_hw3_pb2.IDKey(node=csci4220_hw3_pb2.Node(id=local_id,port=int(my_port),address=my_address)
 		, idkey = local_id))
 
 	print("Just received: id:{} address:{} port:{} nodes:{}".format(
@@ -315,9 +315,9 @@ def handleFindNodeMsg(buffer):
 				#Send a find_node rpc to this node
 				#Ask about what node to send
 				channel = grpc.insecure_channel(node.address + ':' + str(node.port))
-				stub = csci4220_hw4_pb2_grpc.KadImplStub(channel)
-				response = stub.FindNode(csci4220_hw4_pb2.IDKey(
-					node=csci4220_hw4_pb2.Node(id=local_id,port=int(my_port),address=my_address),
+				stub = csci4220_hw3_pb2_grpc.KadImplStub(channel)
+				response = stub.FindNode(csci4220_hw3_pb2.IDKey(
+					node=csci4220_hw3_pb2.Node(id=local_id,port=int(my_port),address=my_address),
 					 idkey = node_id))
 				R = response.nodes
 				storeNodeInKBuckets(node) #mark node as most recent
@@ -365,9 +365,9 @@ def handleFindValueMsg(buffer):
 				#Send a find_node rpc to this node
 				#Ask about what node to send
 				channel = grpc.insecure_channel(node.address + ':' + str(node.port))
-				stub = csci4220_hw4_pb2_grpc.KadImplStub(channel)
-				response = stub.FindValue(csci4220_hw4_pb2.IDKey(
-					node=csci4220_hw4_pb2.Node(id=local_id,port=int(my_port),address=my_address),
+				stub = csci4220_hw3_pb2_grpc.KadImplStub(channel)
+				response = stub.FindValue(csci4220_hw3_pb2.IDKey(
+					node=csci4220_hw3_pb2.Node(id=local_id,port=int(my_port),address=my_address),
 					 idkey = key))
 				R = response.nodes
 				storeNodeInKBuckets(node) #mark node as most recent
@@ -424,9 +424,9 @@ def handleStoreMsg(buffer):
 	else:
 		print("Storing key {} at node {}".format(key,closest_node.id))
 		channel = grpc.insecure_channel(closest_node.address + ':' + str(closest_node.port))
-		stub = csci4220_hw4_pb2_grpc.KadImplStub(channel)
-		response = stub.Store(csci4220_hw4_pb2.KeyValue(
-			node=csci4220_hw4_pb2.Node(
+		stub = csci4220_hw3_pb2_grpc.KadImplStub(channel)
+		response = stub.Store(csci4220_hw3_pb2.KeyValue(
+			node=csci4220_hw3_pb2.Node(
 				id=local_id,
 				port=int(my_port),
 				address=my_address
@@ -450,9 +450,9 @@ def handleQuitMsg():
 			print("Letting {} know I'm quitting.".format(remote_id))
 
 			channel = grpc.insecure_channel(str(remote_addr) + ':' + str(remote_port))
-			stub = csci4220_hw4_pb2_grpc.KadImplStub(channel)
-			response = stub.Quit(csci4220_hw4_pb2.IDKey(
-				node = csci4220_hw4_pb2.Node(
+			stub = csci4220_hw3_pb2_grpc.KadImplStub(channel)
+			response = stub.Quit(csci4220_hw3_pb2.IDKey(
+				node = csci4220_hw3_pb2.Node(
 					id = local_id,
 					port = int(my_port),
 					address = my_address),
@@ -484,7 +484,7 @@ def listenForConnections():
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
 
 
-	csci4220_hw4_pb2_grpc.add_KadImplServicer_to_server(KadImpl(), server)
+	csci4220_hw3_pb2_grpc.add_KadImplServicer_to_server(KadImpl(), server)
 
 	server.add_insecure_port(my_address + ':' + my_port)
 
