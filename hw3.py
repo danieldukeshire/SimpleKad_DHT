@@ -40,7 +40,7 @@ class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
         node = request.node
         id_key = request.idkey
 
-        print("Serving FindNode({}) request for {}", id_key, node.id)
+        print("Serving FindNode({}) request for {}".format(id_key, node.id))
 
         closest_nodes = find_k_closest(id_key)
         save_node(node)
@@ -51,10 +51,6 @@ class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
                 port=int(my_port),
                 address=my_address),
             nodes=closest_nodes)
-
-
-
-
 
     def FindValue(self, request, context):
         print("To be implemented")
@@ -112,26 +108,25 @@ def save_node(node):
 
     if xor != 0:
         while val < xor:
-            val = base**++exp
+            exp += 1
+            val = base**exp
 
         if val > xor:
-            --exp
+            exp -= 1
 
-    node_idx = 0
-
+    exists = False
+    existing_idx = 0
     # See if node already exists
-    while node_idx < len(k_buckets[exp]):
-        cmp_node = k_buckets[exp][node_idx]
-        if cmp_node.id == node.id and cmp_node.address == node.address and cmp_node.port == node.port:
+    for existing_node in k_buckets[exp]:
+        if existing_node.id == node.id and existing_node.address == node.address and existing_node.port == node.port:
+            exists = True
             break
-        ++node_idx
-
+        existing_idx += 1
     # If node already exists or list is full, remove the correct node
-    if node_idx < len(k_buckets[exp]):
-        k_buckets[exp].pop(node_idx)
-    else:
-        if len(k_buckets[exp]) >= k:
-            k_buckets[exp].pop(0)
+    if exists:
+        k_buckets[exp].pop(existing_idx)
+    elif len(k_buckets[exp]) >= k:
+        k_buckets[exp].pop(0)
 
     # Finally, append node to head of list [last index]
     k_buckets[exp].append(node)
@@ -143,8 +138,11 @@ def find_k_closest(id_key):
     for node_list in k_buckets:
         for node in node_list:
             k_closest.append((node, id_key ^ node.id))
+    if len(k_closest) < 1:
+        return []
     # Return first k nodes ordered by distance
     return map(list, zip(*k_closest.sort(key=lambda x: x[0])[:k]))
+
 
 # bootStrap()
 # Takes args: the input string from the console
@@ -154,7 +152,7 @@ def bootstrap(args):
     port = args.split()[2]  # Getting the port from input
     address = socket.gethostbyname(hostname)  # Getting the hostname
 
-    channel = grpc.insecure_channel(address + ':' + port)
+    channel = grpc.insecure_channel("{}:{}".format(address, port))
     kad = csci4220_hw3_pb2_grpc.KadImplStub(channel)
 
     # Get NodeList from remote node to update k_buckets
@@ -169,7 +167,7 @@ def bootstrap(args):
     for node in response.nodes:
         save_node(node)
 
-    print("After BOOTSTRAP({}), k_buckets now look like:\n{}", response.responding_node.id, print_buckets())
+    print("After BOOTSTRAP({}), k_buckets now look like:\n{}".format(response.responding_node.id, print_buckets()))
 
 
 def print_buckets():
@@ -215,16 +213,11 @@ def initialize():
     if len(sys.argv) != 4:  # Some error checking
         print("Error, correct usage is {} [my id] [my port] [k]".format(sys.argv[0]))
         sys.exit(-1)
-    global local_id
-    global my_port
-    global k
-    global my_hostname
-    global my_address
-    global hash_table
+    global local_id, my_port, k, my_hostname, my_address, hash_table
 
     local_id = int(sys.argv[1])
     my_port = str(int(sys.argv[2]))
-    k = sys.argv[3]
+    k = int(sys.argv[3])
     hash_table = LRUCache(k)
 
     my_hostname = socket.gethostname()
