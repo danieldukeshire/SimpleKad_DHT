@@ -37,14 +37,21 @@ hash_table = None
 # other client/servers
 class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
     def FindNode(self, request, context):
-        # Getting values from the client request
         node = request.node
-        id_request = node.id
-        address_request = node.address
-        port_request = node.port
-        id_target = node.idkey
+        id_key = request.idkey
 
-        print("Serving FindNode(" + id_target + ") request for " + id_request)
+        print("Serving FindNode({}) request for {}", id_key, node.id)
+
+        closest_nodes = find_k_closest(id_key)
+        save_node(node)
+
+        return csci4220_hw3_pb2.NodeList(
+            responding_node=csci4220_hw3_pb2.Node(
+                id=local_id,
+                port=int(my_port),
+                address=my_address),
+            nodes=closest_nodes)
+
 
 
 
@@ -129,6 +136,15 @@ def save_node(node):
     # Finally, append node to head of list [last index]
     k_buckets[exp].append(node)
 
+
+# Return the k closest nodes to this node ordered by xor distance
+def find_k_closest(id_key):
+    k_closest = list()
+    for node_list in k_buckets:
+        for node in node_list:
+            k_closest.append((node, id_key ^ node.id))
+    # Return first k nodes ordered by distance
+    return map(list, zip(*k_closest.sort(key=lambda x: x[0])[:k]))
 
 # bootStrap()
 # Takes args: the input string from the console
