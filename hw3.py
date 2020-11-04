@@ -13,20 +13,21 @@ import sys
 import socket
 import grpc
 import time
-import select
-import queue as Queue
 import threading
 import csci4220_hw3_pb2
 import csci4220_hw3_pb2_grpc
+from LRUCache import LRUCache
 
 # Some global variables
 N = 4  # The maximum number of buckets (N) is 4
+k = None
 k_buckets = [[]] * N  # The k_buckets array: N buckets of size k
 _ONE_DAY_IN_SECONDS = 86400
 local_id = None
 my_port = None
 my_hostname = None
 my_address = None
+hash_table = None
 
 
 # Server-side ---------------------------------------------------------------------------
@@ -43,10 +44,10 @@ class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
         port_request = node.port
         id_target = node.idkey
 
-        closest_nodes = findClosestNodes(id_target)  # determines the closest nodes
+        print("Serving FindNode(" + id_target + ") request for " + id_request)
 
-        str = "Serving FindNode(" + id_target + ") request for " + id_request  # String formatting for output
-        print(str)  # Prints to remote client
+
+
 
     def FindValue(self, request, context):
         print("To be implemented")
@@ -94,19 +95,60 @@ def store(input):
     print(input)
 
 
+# Store a node in the correct bucket
+# Note: Head of the list is the last index
+def save_node(node):
+    xor = node.id ^ local_id
+    base = 2
+    exp = 0
+    val = base**exp
+
+    if xor != 0:
+        while val < xor:
+            val = base**++exp
+
+        if val > xor:
+            --exp
+
+    node_idx = 0
+
+    # See if node already exists
+    while node_idx < len(k_buckets[exp]):
+        cmp_node = k_buckets[exp][node_idx]
+        if cmp_node.id == node.id and cmp_node.address == node.address and cmp_node.port == node.port:
+            break
+        ++node_idx
+
+    # If node already exists or list is full, remove the correct node
+    if node_idx < len(k_buckets[exp]):
+        k_buckets[exp].pop(node_idx)
+    else:
+        if len(k_buckets[exp]) >= k:
+            k_buckets[exp].pop(0)
+
+    # Finally, append node to head of list [last index]
+    k_buckets[exp].append(node)
+
+
 # bootStrap()
-# Takes input: the input string from the console
+# Takes args: the input string from the console
 #
-def bootstrap(input, my_hostname, my_address):
-    hostname = input.split()[1]  # Gettting the hostname from input
-    port = input.split()[2]  # Getting the port from input
+def bootstrap(args):
+    hostname = args.split()[1]  # Gettting the hostname from input
+    port = args.split()[2]  # Getting the port from input
     address = socket.gethostbyname(hostname)  # Getting the hostname
 
-    channel = grpc.insecure_channel(address + ':' + port)  # Establishing an insecure channel
-    stub = csci4220_hw3_pb2_grpc.KadImplStub(channel)  # Using the gRPC API in "stub"
-    z = stub.FindNode(
-        csci4220_hw3_pb2.IDKey(node=csci4220_hw3_pb2.Node(id=local_id, port=int(my_port), address=my_address),
-                               idkey=local_id))
+    channel = grpc.insecure_channel(address + ':' + port)
+    kad = csci4220_hw3_pb2_grpc.KadImplStub(channel)
+
+    # Get list of nodes from remote node to update k_buckets
+    nodes = kad.FindNode(
+        csci4220_hw3_pb2.IDKey(
+            node=csci4220_hw3_pb2.Node(
+                id=local_id,
+                port=int(my_port),
+                address=my_address),
+            idkey=local_id))
 
 
 # findValue()
@@ -134,42 +176,43 @@ def quit(input):
     print("Shut down node {}".format(local_id))
 
 
-# run()
-# reads-in input from the command-line in the form of:
-# <nodeID> <portnum> <k>
-# and proceeds to read input from stdin
-def run():
+# Reads command line arguments and initializes variables
+def initialize():
     if len(sys.argv) != 4:  # Some error checking
         print("Error, correct usage is {} [my id] [my port] [k]".format(sys.argv[0]))
         sys.exit(-1)
     global local_id
     global my_port
+    global k
     global my_hostname
     global my_address
+    global hash_table
 
     local_id = int(sys.argv[1])
-    my_port = str(int(sys.argv[2]))  # add_insecure_port() will want a string
-    k = int(sys.argv[3])
+    my_port = str(int(sys.argv[2]))
+    k = sys.argv[3]
+    hash_table = LRUCache(k)
 
-    # my_hostname = socket.gethostname()                 # Gets my host name
-    my_hostname = "127.0.0.1"
-    my_address = socket.gethostbyname(my_hostname)  # Gets my IP address from my hostname
+    my_hostname = socket.gethostname()
+    my_address = socket.gethostbyname(my_hostname)
 
+
+def run():
     while True:
         buf = input()
         print("MAIN: Received from stdin: " + buf)
-        if "STORE" in buf:  # Passes to store function
+        if "STORE" in buf:
             store(buf)
-        elif "BOOTSTRAP" in buf:  # Passes to bootstrap function
-            bootstrap(buf, my_hostname, my_address)
-        elif "FIND_VALUE" in buf:  # Passes to find_value function
+        elif "BOOTSTRAP" in buf:
+            bootstrap(buf)
+        elif "FIND_VALUE" in buf:
             find_value(buf)
-        elif "FIND_NODE" in buf:  # Passes to find_node function
+        elif "FIND_NODE" in buf:
             find_node(buf)
-        elif "QUIT" in buf:  # Terminates the function
+        elif "QUIT" in buf:
             quit(buf)
             sys.exit()
-        else:  # Otherwise... keep looping and print the following
+        else:
             print("Invalid command. Try: 'STORE', 'BOOTSTRAP', 'FIND_VALUE', 'FIND NODE', 'QUIT'")
 
 
@@ -178,5 +221,6 @@ def run():
 # Threads off a server to simultaniously work alongside the client
 # The client works through run()
 if __name__ == '__main__':
-    threading.Thread(target=serve).start()  # server thread, so we can simultaniously do ....
+    initialize()
+    threading.Thread(target=serve).start()
     run()
