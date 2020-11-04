@@ -141,14 +141,32 @@ def bootstrap(args):
     channel = grpc.insecure_channel(address + ':' + port)
     kad = csci4220_hw3_pb2_grpc.KadImplStub(channel)
 
-    # Get list of nodes from remote node to update k_buckets
-    nodes = kad.FindNode(
+    # Get NodeList from remote node to update k_buckets
+    response = kad.FindNode(
         csci4220_hw3_pb2.IDKey(
             node=csci4220_hw3_pb2.Node(
                 id=local_id,
                 port=int(my_port),
                 address=my_address),
             idkey=local_id))
+
+    for node in response.nodes:
+        save_node(node)
+
+    print("After BOOTSTRAP({}), k_buckets now look like:\n{}", response.responding_node.id, print_buckets())
+
+
+def print_buckets():
+    result = str()
+    for i in range(k_buckets):
+        result += str(i) + " ["
+        for j in range(k_buckets[i]):
+            if j < len(k_buckets[i]) - 1:
+                result += str(k_buckets[i][j].id) + ":" + str(k_buckets[i][j].port) + " "
+            else:
+                result += str(k_buckets[i][j].id) + ":" + str(k_buckets[i][j].port) + "]\n"
+
+    return result
 
 
 # findValue()
