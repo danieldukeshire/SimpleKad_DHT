@@ -158,9 +158,9 @@ def bootstrap(args):
 
 def print_buckets():
     result = str()
-    for i in range(k_buckets):
+    for i in range(len(k_buckets)):
         result += str(i) + " ["
-        for j in range(k_buckets[i]):
+        for j in range(len(k_buckets[i])):
             if j < len(k_buckets[i]) - 1:
                 result += str(k_buckets[i][j].id) + ":" + str(k_buckets[i][j].port) + " "
             else:
