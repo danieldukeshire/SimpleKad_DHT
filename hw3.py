@@ -56,18 +56,13 @@ class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
         print("To be implemented")
 
     def Store(self, request, context):
-        node = request.node
-        id_request = node.id
-        address_request = node.address
-        port_request = node.port
-        print(
-            "Recieved store request from id:{}, port:{}, address:{}".format(id_request, address_request, port_request))
-
-        key_request = request.key
-        val_request = request.value
-        print("Storing key {} value {}".format(key_request, val_request))
-
-        # implement storePair
+        print("Storing key {} value \"{}\"".format(request.key, request.value))
+        hash_table.put(request.key, request.value)
+        save_node(request.node)
+        # Need to return something, but this isn't used
+        return csci4220_hw3_pb2.NodeList(
+            responding_node=request.node,
+            nodes=[])
 
     def Quit(self, request, context):
         print("To be implemented")
@@ -93,9 +88,26 @@ def serve():
 # store()
 # Takes input: the input string from the console
 #
-def store(input):
-    print("STORE")
-    print(input)
+def store(args):
+    key = int(args.split()[1])
+    value = args.split()[2]
+
+    k_closest = find_k_closest(key)
+    closest_node = None if len(k_closest) < 1 else k_closest[0]
+
+    if closest_node is None or key ^ local_id < key ^ closest_node.id:
+        print("Storing key {} value \"{}\"".format(key, value))
+        hash_table.put(key, value)
+    else:
+        print("Storing key {} at node {}".format(key, closest_node.id))
+        channel = grpc.insecure_channel("{}:{}".format(closest_node.address, closest_node.port))
+        kad = csci4220_hw3_pb2_grpc.KadImplStub(channel)
+
+        kad.Store(csci4220_hw3_pb2.KeyValue(
+            node=closest_node,
+            key=key,
+            value=value
+        ))
 
 
 # Store a node in the correct bucket
@@ -224,6 +236,7 @@ def find_node(args):
 
     node_found = False
 
+    # See Pseudo-Code in Handout
     while len(unvisited) > 0 and not node_found:
         for node in unvisited:
             channel = grpc.insecure_channel("{}:{}".format(node.address, node.port))
@@ -261,7 +274,6 @@ def find_node(args):
             print("Could not find destination id ".format(node_id))
 
 
-
 # quit()
 # Takes input: the input string from the console
 #
@@ -291,7 +303,6 @@ def initialize():
 def run():
     while True:
         buf = input()
-        print("MAIN: Received from stdin: " + buf)
         if "STORE" in buf:
             store(buf)
         elif "BOOTSTRAP" in buf:
