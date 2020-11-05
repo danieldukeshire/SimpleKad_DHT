@@ -21,7 +21,7 @@ from LRUCache import LRUCache
 # Some global variables
 N = 4  # The maximum number of buckets (N) is 4
 k = None
-k_buckets = [[]] * N  # The k_buckets array: N buckets of size k
+k_buckets = []
 _ONE_DAY_IN_SECONDS = 86400
 local_id = None
 my_port = None
@@ -125,7 +125,7 @@ def save_node(node):
     # If node already exists or list is full, remove the correct node
     if exists:
         k_buckets[exp].pop(existing_idx)
-    elif len(k_buckets[exp]) >= k:
+    elif len(k_buckets[exp]) == k:
         k_buckets[exp].pop(0)
 
     # Finally, append node to head of list [last index]
@@ -164,8 +164,13 @@ def bootstrap(args):
                 address=my_address),
             idkey=local_id))
 
+    # Save nodes learned from bootstrap node
     for node in response.nodes:
+        print("NODE: {}".format(node.id))
         save_node(node)
+
+    # Save bootstrap node
+    save_node(response.responding_node)
 
     print("After BOOTSTRAP({}), k_buckets now look like:\n{}".format(response.responding_node.id, print_buckets()))
 
@@ -175,10 +180,13 @@ def print_buckets():
     for i in range(len(k_buckets)):
         result += str(i) + " ["
         for j in range(len(k_buckets[i])):
+            result += "{}:{}".format(k_buckets[i][j].id, k_buckets[i][j].port)
             if j < len(k_buckets[i]) - 1:
-                result += str(k_buckets[i][j].id) + ":" + str(k_buckets[i][j].port) + " "
-            else:
-                result += str(k_buckets[i][j].id) + ":" + str(k_buckets[i][j].port) + "]\n"
+                result += " "
+        if i < len(k_buckets) - 1:
+            result += "]\n"
+        else:
+            result += "]"
 
     return result
 
@@ -213,10 +221,11 @@ def initialize():
     if len(sys.argv) != 4:  # Some error checking
         print("Error, correct usage is {} [my id] [my port] [k]".format(sys.argv[0]))
         sys.exit(-1)
-    global local_id, my_port, k, my_hostname, my_address, hash_table
+    global local_id, my_port, k, my_hostname, my_address, hash_table, k_buckets
 
     local_id = int(sys.argv[1])
     my_port = str(int(sys.argv[2]))
+    k_buckets = [[] for i in range(4)]
     k = int(sys.argv[3])
     hash_table = LRUCache(k)
 
