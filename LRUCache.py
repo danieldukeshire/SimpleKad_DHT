@@ -24,3 +24,6 @@ class LRUCache:
         self.cache.move_to_end(key)
         if len(self.cache) > self.capacity:
             self.cache.popitem(last=False)
+
+    def contains_key(self, key: int) -> int:
+        return key in self.cache

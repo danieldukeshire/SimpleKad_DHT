@@ -49,20 +49,45 @@ class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
             responding_node=csci4220_hw3_pb2.Node(
                 id=local_id,
                 port=int(my_port),
-                address=my_address),
-            nodes=closest_nodes)
+                address=my_address
+            ),
+            nodes=closest_nodes
+        )
 
     def FindValue(self, request, context):
-        print("To be implemented")
+        print("Serving FindKey({}) request for {}".format(request.idkey, request.node.id))
+        has_key = hash_table.contains_key(request.idkey)
+        value = ""
+        nodes = []
+        if has_key:
+            value = hash_table.get(request.idkey)
+        else:
+            nodes = find_k_closest(request.idkey)
+
+        return csci4220_hw3_pb2.KV_Node_Wrapper(
+            responding_node=csci4220_hw3_pb2.Node(
+                id=local_id,
+                port=int(my_port),
+                address=my_address
+            ),
+            mode_kv=has_key,
+            kv=csci4220_hw3_pb2.KeyValue(
+                node=request.node,
+                key=request.idkey,
+                value=value
+            ),
+            nodes=nodes
+        )
 
     def Store(self, request, context):
         print("Storing key {} value \"{}\"".format(request.key, request.value))
         hash_table.put(request.key, request.value)
         save_node(request.node)
         # Need to return something, but this isn't used
-        return csci4220_hw3_pb2.NodeList(
-            responding_node=request.node,
-            nodes=[])
+        return csci4220_hw3_pb2.IDKey(
+            node=request.node,
+            idkey=request.key
+        )
 
     def Quit(self, request, context):
         print("To be implemented")
@@ -209,9 +234,60 @@ def print_buckets():
 # findValue()
 # Takes input: the input string from the console
 #
-def find_value(input):
-    print("FINDVALUE")
-    print(input)
+def find_value(args):
+    print("Before FIND_VALUE command, k-buckets are:\n{}".format(print_buckets()))
+    key = int(args.split()[1])
+    if hash_table.contains_key(key):
+        print("Found data \"{}\" for key {}".format(hash_table.get(key), key))
+        return
+    else:
+        # Similar algorithm to FIND_NODE
+
+        unvisited = find_k_closest(key)
+        visited = list()
+        visited.append(csci4220_hw3_pb2.Node(
+                id=local_id,
+                port=int(my_port),
+                address=my_address
+            ))
+        next_visit = []
+
+        value_found = False
+        value = None
+
+        while len(unvisited) > 0 and not value_found:
+            for node in unvisited:
+                channel = grpc.insecure_channel("{}:{}".format(node.address, node.port))
+                kad = csci4220_hw3_pb2_grpc.KadImplStub(channel)
+
+                response = kad.FindValue(
+                    csci4220_hw3_pb2.IDKey(
+                        node=node,
+                        idkey=key
+                    )
+                )
+                save_node(node)
+                visited.append(node)
+
+                if response.mode_kv:
+                    value = response.kv.value
+                    value_found = True
+                    break
+
+                for resp_node in response.nodes:
+                    if not node_is_stored(resp_node) and resp_node.id != local_id:
+                        save_node(resp_node)
+                    if resp_node not in visited:
+                        next_visit.append(resp_node)
+            unvisited = next_visit
+            next_visit = []
+
+            if value_found:
+                print("Found value \"{}\" for key {}".format(value, key))
+            else:
+                print("Could not find key ".format(key))
+
+            print("After FIND_VALUE command, k-buckets are:\n" + print_buckets())
 
 
 # Returns True if node is stored in a k_bucket, false otherwise
