@@ -253,18 +253,24 @@ def print_buckets():
     return result
 
 
+#
 # findValue()
-# Takes input: the input string from the console
+# Takes input: the input string from the console in the form:
+# FIND_VALUE <key>
+# This behaves the same way that FIND_NODE does, but uses the key instead of a node ID to determine
+# which node to query next, and the FindValue RPC instead of the FindNode RPC. If the remote node has
+# not been told to store the key, it will reply with the k closest nodes to the key. If the remote node has been
+# told to store the key before, then it does not return a list of nodes, and instead responds with the key and
+# the associated value.
 #
 def find_value(args):
     print("Before FIND_VALUE command, k-buckets are:\n{}".format(print_buckets()))
-    key = int(args.split()[1])
+
+    key = int(args.split()[1])                              # Getting value from the input
     if hash_table.contains_key(key):
         print("Found data \"{}\" for key {}".format(hash_table.get(key), key))
         return
     else:
-        # Similar algorithm to FIND_NODE
-
         unvisited = find_k_closest(key)
         visited = list()
         visited.append(csci4220_hw3_pb2.Node(
@@ -311,127 +317,140 @@ def find_value(args):
 
             print("After FIND_VALUE command, k-buckets are:\n" + print_buckets())
 
-
+#
+# node_is_stored()
+# Takes in a node as input
 # Returns True if node is stored in a k_bucket, false otherwise
+#
 def node_is_stored(node):
-    for node_list in k_buckets:
-        for cmp_node in node_list:
-            if node.id == cmp_node.id:
+    for node_list in k_buckets:             # Loops over k_buckets
+        for cmp_node in node_list:          # Loops over each node
+            if node.id == cmp_node.id:      # Makes comparison
                 return True
+    return False                            # If no nodes are found, we return false.
 
-    return False
-
-
+#
 # findNode()
-# Takes input: the input string from the console
+# Takes input: the input string from the console in the form:
+# FIND_NODE <nodeID>
+# attempts to find a remote node, and has the side effect of updating the current node’s kbuckets.
+# If the node’s ID is <nodeID>, then no search should be made and the node can skip directly to
+# the post-search output, and should behave as though it found the node.
 #
 def find_node(args):
     print("Before FIND_NODE command, k-buckets are:\n{}".format(print_buckets()))
+
     node_id = int(args.split()[1])
-    unvisited = find_k_closest(node_id)
-    visited = []
+    unvisited = find_k_closest(node_id)                 # Accesses the k closest nodes in the buckets
+    visited = []                                        # returned in a dictionary
     next_visit = []
 
     node_found = False
-
-    # See Pseudo-Code in Handout
     while len(unvisited) > 0 and not node_found:
-        for node in unvisited:
+        for node in unvisited:                          # looping over all of the unvisted nodes
             channel = grpc.insecure_channel("{}:{}".format(node.address, node.port))
             kad = csci4220_hw3_pb2_grpc.KadImplStub(channel)
-
-            # Get NodeList from remote node to update k_buckets
-            response = kad.FindNode(
-                csci4220_hw3_pb2.IDKey(
+                                                        # creates a connection to each node
+            response = kad.FindNode(                    # attempts to find the node in search by searching this
+                csci4220_hw3_pb2.IDKey(                 # node's k_buckets
                     node=node,
                     idkey=node_id))
+            save_node(node)                             # As we just accessed this node, we need to update the buckets
+            visited.append(node)                        # Add it to the visited node, do not want to backtrack
 
-            save_node(node)
-            visited.append(node)
-
-            if node.id == node_id:
+            if node.id == node_id:                      # If this node is the one we are searching for we can break
                 node_found = True
                 break
 
-            for resp_node in response.nodes:
+            for resp_node in response.nodes:            # Otherwise we also need to check to see the node's k_buckets
                 if not node_is_stored(resp_node):
-                    save_node(resp_node)
+                    save_node(resp_node)                # If we come across a node not in our network.... we add it
                 if resp_node not in visited:
-                    next_visit.append(resp_node)
+                    next_visit.append(resp_node)        # Also add this one to the visited nodes list
                 if resp_node.id == node_id:
                     node_found = True
                     break
         unvisited = next_visit
         next_visit = []
 
+        # Handling the computed node / no node found messages
         print("After FIND_NODE command, k-buckets are:\n" + print_buckets())
-
         if node_found:
             print("Found destination id {}".format(node_id))
         else:
             print("Could not find destination id ".format(node_id))
 
-
-# quit()
-# Takes input: the input string from the console
+#
+# execute_quit()
+# Terminates the current node (the client)
+# Whilst doing this, notifies each node upon termination
+# in order to update the k_buckets for each client in the
+# p2p connection list
 #
 def execute_quit():
     for node_list in k_buckets:
         for node in node_list:
-            print("Letting {} know I'm quitting.".format(node.id))
+            print("Letting {} know I'm quitting.".format(node.id))                      # notifies each node in the k_buckets
             channel = grpc.insecure_channel("{}:{}".format(node.address, node.port))
-            kad = csci4220_hw3_pb2_grpc.KadImplStub(channel)
-            kad.Quit(csci4220_hw3_pb2.IDKey(
-                node=csci4220_hw3_pb2.Node(
-                    id=local_id,
+            kad = csci4220_hw3_pb2_grpc.KadImplStub(channel)                            # creates a connection to each node
+            kad.Quit(csci4220_hw3_pb2.IDKey(                                            # and calls a quit on THIS node
+                node=csci4220_hw3_pb2.Node(                                             # to other nodes, so they can update
+                    id=local_id,                                                        # their k_buckets
                     port=int(my_port),
                     address=my_address),
                 idkey=local_id)
             )
+    print("Shut down node {}".format(local_id))                                         # Outputs to the console
 
-    print("Shut down node {}".format(local_id))
-
-
-# Reads command line arguments and initializes variables
+#
+# initialize()
+# Stores the command-line input into global variables
+# ./out <node id> <port number> <k value>
+#
 def initialize():
-    if len(sys.argv) != 4:  # Some error checking
+    if len(sys.argv) != 4:                          # Some error checking
         print("Error, correct usage is {} [my id] [my port] [k]".format(sys.argv[0]))
         sys.exit(-1)
     global local_id, my_port, k, my_hostname, my_address, hash_table, k_buckets
 
-    local_id = int(sys.argv[1])
-    my_port = str(int(sys.argv[2]))
+    local_id = int(sys.argv[1])                     # Storing the local id
+    my_port = str(int(sys.argv[2]))                 # Storing the portnum
     k_buckets = [[] for i in range(N)]
     k = int(sys.argv[3])
-    hash_table = LRUCache(k)
+    hash_table = LRUCache(k)                        # Initializing LRU cache datastructure in LRUCache.py
 
-    my_hostname = socket.gethostname()
+    my_hostname = socket.gethostname()              # Calculating the hostname with the given parameters
     my_address = socket.gethostbyname(my_hostname)
 
-
+#
+# run()
+# Takes input from the terminal, and handles the input in
+# accordance to the Kadilema functionality. Calls helper functions
+# for each different action performed in the p2p
+#
 def run():
     while True:
         buf = input()
-        if "STORE" in buf:
+        if "STORE" in buf:                  # handling store message from the client
             store(buf)
-        elif "BOOTSTRAP" in buf:
+        elif "BOOTSTRAP" in buf:            # handling bootstrap message from the client
             bootstrap(buf)
-        elif "FIND_VALUE" in buf:
+        elif "FIND_VALUE" in buf:           # handling find value message from the client
             find_value(buf)
-        elif "FIND_NODE" in buf:
+        elif "FIND_NODE" in buf:            # handling find node message from the client
             find_node(buf)
-        elif "QUIT" in buf:
+        elif "QUIT" in buf:                 # handling quit message from the client
             execute_quit()
             sys.exit()
         else:
             print("Invalid command. Try: 'STORE', 'BOOTSTRAP', 'FIND_VALUE', 'FIND NODE', 'QUIT'")
 
-
-# main
-# Gathers input from the command line, stores in global variables
+#
+# main()
 # Threads off a server to simultaniously work alongside the client
 # The client works through run()
+#
 if __name__ == '__main__':
-    initialize()
-    threading.Thread(target=serve).start()
-    run()
+    initialize()                                # initializes the global variables
+    threading.Thread(target=serve).start()      # threads off the server to work simultaniously with the client
+    run()                                       # starts the client process
