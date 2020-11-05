@@ -137,11 +137,14 @@ def find_k_closest(id_key):
     k_closest = list()
     for node_list in k_buckets:
         for node in node_list:
-            k_closest.append((node, id_key ^ node.id))
+            k_closest.append((node, int(id_key) ^ int(node.id)))
     if len(k_closest) < 1:
         return []
     # Return first k nodes ordered by distance
-    return map(list, zip(*k_closest.sort(key=lambda x: x[0])[:k]))
+    nodes = []
+    for item in k_closest:
+        nodes.append(item[0])
+    return nodes
 
 
 # bootStrap()
@@ -199,12 +202,64 @@ def find_value(input):
     print(input)
 
 
+# Returns True if node is stored in a k_bucket, false otherwise
+def node_is_stored(node):
+    for node_list in k_buckets:
+        for cmp_node in node_list:
+            if node.id == cmp_node.id:
+                return True
+
+    return False
+
+
 # findNode()
 # Takes input: the input string from the console
 #
-def find_node(input):
-    print("FINDNODE")
-    print(input)
+def find_node(args):
+    print("Before FIND_NODE command, k-buckets are:\n{}".format(print_buckets()))
+    node_id = int(args.split()[1])
+    unvisited = find_k_closest(node_id)
+    visited = []
+    next_visit = []
+
+    node_found = False
+
+    while len(unvisited) > 0 and not node_found:
+        for node in unvisited:
+            channel = grpc.insecure_channel("{}:{}".format(node.address, node.port))
+            kad = csci4220_hw3_pb2_grpc.KadImplStub(channel)
+
+            # Get NodeList from remote node to update k_buckets
+            response = kad.FindNode(
+                csci4220_hw3_pb2.IDKey(
+                    node=node,
+                    idkey=node_id))
+
+            save_node(node)
+            visited.append(node)
+
+            if node.id == node_id:
+                node_found = True
+                break
+
+            for resp_node in response.nodes:
+                if not node_is_stored(resp_node):
+                    save_node(resp_node)
+                if resp_node not in visited:
+                    next_visit.append(resp_node)
+                if resp_node.id == node_id:
+                    node_found = True
+                    break
+        unvisited = next_visit
+        next_visit = []
+
+        print("After FIND_NODE command, k-buckets are:\n" + print_buckets())
+
+        if node_found:
+            print("Found destination id {}".format(node_id))
+        else:
+            print("Could not find destination id ".format(node_id))
+
 
 
 # quit()
@@ -225,7 +280,7 @@ def initialize():
 
     local_id = int(sys.argv[1])
     my_port = str(int(sys.argv[2]))
-    k_buckets = [[] for i in range(4)]
+    k_buckets = [[] for i in range(N)]
     k = int(sys.argv[3])
     hash_table = LRUCache(k)
 
