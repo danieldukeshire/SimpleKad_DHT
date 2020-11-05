@@ -519,5 +519,5 @@ if __name__ == '__main__':
 	bufferSize = 1024
 	setCommandLineArgs()
 	initializeKBuckets()
-	threading.Thread(target=listenForConnections).start()
+	threading.Thread(target=listenForConnections)
 	blockOnStdin()

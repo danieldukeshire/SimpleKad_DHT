@@ -90,7 +90,13 @@ class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
         )
 
     def Quit(self, request, context):
-        print("To be implemented")
+        if node_is_stored(request.node):
+            bucket_num = remove_node(request.idkey)
+            print("Evicting quitting node {} from bucket {}".format(request.idkey, bucket_num))
+        else:
+            print("No record of quitting node {} in k-buckets.".format(request.idkey))
+
+        return request
 
 
 # server
@@ -134,6 +140,22 @@ def store(args):
             value=value
         ))
 
+# Remove node of specified id
+# If node does not exist, returns -1
+def remove_node(node_id):
+    index = -1
+    position = -1
+    for i in range(len(k_buckets)):
+        for j in range(len(k_buckets[i])):
+            if node_id == k_buckets[i][j].id:
+                index = i
+                position = j
+                break
+        if index != -1:
+            break
+
+    k_buckets[index].pop(position)
+    return index
 
 # Store a node in the correct bucket
 # Note: Head of the list is the last index
@@ -353,9 +375,20 @@ def find_node(args):
 # quit()
 # Takes input: the input string from the console
 #
-def quit(input):
-    print("QUIT")
-    print(input)
+def execute_quit():
+    for node_list in k_buckets:
+        for node in node_list:
+            print("Letting {} know I'm quitting.".format(node.id))
+            channel = grpc.insecure_channel("{}:{}".format(node.address, node.port))
+            kad = csci4220_hw3_pb2_grpc.KadImplStub(channel)
+            kad.Quit(csci4220_hw3_pb2.IDKey(
+                node=csci4220_hw3_pb2.Node(
+                    id=local_id,
+                    port=int(my_port),
+                    address=my_address),
+                idkey=local_id)
+            )
+
     print("Shut down node {}".format(local_id))
 
 
@@ -388,7 +421,7 @@ def run():
         elif "FIND_NODE" in buf:
             find_node(buf)
         elif "QUIT" in buf:
-            quit(buf)
+            execute_quit()
             sys.exit()
         else:
             print("Invalid command. Try: 'STORE', 'BOOTSTRAP', 'FIND_VALUE', 'FIND NODE', 'QUIT'")
