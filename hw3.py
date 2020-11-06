@@ -242,12 +242,13 @@ def bootstrap(args):
                 address=my_address),
             idkey=local_id))
 
+    # Save bootstrap node
+    save_node(response.responding_node)
+
     # Save nodes learned from bootstrap node
     for node in response.nodes:
         save_node(node)
 
-    # Save bootstrap node
-    save_node(response.responding_node)
 
     print("After BOOTSTRAP({}), k_buckets now look like:\n{}".format(response.responding_node.id, print_buckets()))
 
