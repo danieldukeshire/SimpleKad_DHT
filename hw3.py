@@ -378,7 +378,10 @@ def find_node(args):
                                                         # creates a connection to each node
             response = kad.FindNode(                    # attempts to find the node in search by searching this
                 csci4220_hw3_pb2.IDKey(                 # node's k_buckets
-                    node=node,
+                    node=csci4220_hw3_pb2.Node(                                             # to other nodes, so they can update
+                        id=local_id,                                                        # their k_buckets
+                        port=int(my_port),
+                        address=my_address),
                     idkey=node_id))
             save_node(node)                             # As we just accessed this node, we need to update the buckets
             visited.append(node)                        # Add it to the visited node, do not want to backtrack
@@ -394,15 +397,16 @@ def find_node(args):
                     next_visit.append(resp_node)        # Also add this one to the visited nodes list
                 if resp_node.id == node_id:
                     node_found = True
-                    break
+            if node_found:
+                break
         unvisited = next_visit
         next_visit = []
 
-        print("After FIND_NODE command, k-buckets are:\n" + print_buckets())
         if node_found:                                  # Handling the computed node / no node found messages
             print("Found destination id {}".format(node_id))
         else:
             print("Could not find destination id ".format(node_id))
+        print("After FIND_NODE command, k-buckets are:\n" + print_buckets())
 
 
 #
@@ -426,6 +430,7 @@ def execute_quit():
                 idkey=local_id)
             )
     print("Shut down node {}".format(local_id))                                         # Outputs to the console
+
 
 #
 # initialize()
