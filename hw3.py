@@ -80,7 +80,7 @@ class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
         )
 
     def Store(self, request, context):
-        print("Storing key {} at node \"{}\"".format(request.key, request.node))
+        print("Storing key {} at value \"{}\"".format(request.key, request.value))
         hash_table.put(request.key, request.value)
         save_node(request.node)
         # Need to return something, but this isn't used
@@ -127,7 +127,7 @@ def store(args):
     closest_node = None if len(k_closest) < 1 else k_closest[0]
 
     if closest_node is None or key ^ local_id < key ^ closest_node.id:
-        print("Storing key {} value \"{}\"".format(key, value))
+        print("Storing key {} at node \"{}\"".format(key, local_id))
         hash_table.put(key, value)
     else:
         print("Storing key {} at node {}".format(key, closest_node.id))
@@ -208,10 +208,13 @@ def find_k_closest(id_key):
     if len(k_closest) < 1:
         return []
     # Return first k nodes ordered by distance
+    k_closest.sort(key=lambda x: x[1])
+    k_closest = k_closest[:k]
     nodes = []
     for item in k_closest:
         nodes.append(item[0])
     return nodes
+
 
 #
 # bootStrap()
@@ -262,12 +265,11 @@ def print_buckets():
         result += str(i) + ":"
         for j in range(len(k_buckets[i])):
             result += " {}:{}".format(k_buckets[i][j].id, k_buckets[i][j].port)
-            if j < len(k_buckets[i]) - 1:                   # String formatting
-                result += " "
         if i < len(k_buckets) - 1:
             result += "\n"
 
     return result
+
 
 #
 # findValue()
@@ -285,6 +287,7 @@ def find_value(args):
     key = int(args.split()[1])                              # Getting value from the input
     if hash_table.contains_key(key):                        # the hash table is where we keep the key value pairs
         print("Found data \"{}\" for key {}".format(hash_table.get(key), key))
+        print("After FIND_VALUE command, k-buckets are:\n" + print_buckets())
         return
     else:
         unvisited = find_k_closest(key)                     #  if we dont have the value in out hash ...
@@ -334,6 +337,7 @@ def find_value(args):
                 print("Could not find key {}".format(key))
             print("After FIND_VALUE command, k-buckets are:\n" + print_buckets())
 
+
 #
 # node_is_stored()
 # Takes in a node as input
@@ -345,6 +349,7 @@ def node_is_stored(node):
             if node.id == cmp_node.id:      # Makes comparison
                 return True
     return False                            # If no nodes are found, we return false.
+
 
 #
 # findNode()
@@ -436,8 +441,7 @@ def initialize():
     k = int(sys.argv[3])
     hash_table = LRUCache(k)                        # Initializing LRU cache datastructure in LRUCache.py
 
-    #my_hostname = socket.gethostname()              # Calculating the hostname with the given parameters
-    my_hostname = "127.0.0.1"
+    my_hostname = socket.gethostname()              # Calculating the hostname with the given parameters
     my_address = socket.gethostbyname(my_hostname)
 
 
@@ -461,6 +465,8 @@ def run():
         elif "QUIT" in buf:                 # handling quit message from the client
             execute_quit()
             sys.exit()
+        elif "PRINT" in buf:
+            print(print_buckets())
         else:
             print("Invalid command. Try: 'STORE', 'BOOTSTRAP', 'FIND_VALUE', 'FIND NODE', 'QUIT'")
 
