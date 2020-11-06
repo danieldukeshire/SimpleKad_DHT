@@ -80,7 +80,7 @@ class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
         )
 
     def Store(self, request, context):
-        print("Storing key {} value \"{}\"".format(request.key, request.value))
+        print("Storing key {} at node \"{}\"".format(request.key, request.node))
         hash_table.put(request.key, request.value)
         save_node(request.node)
         # Need to return something, but this isn't used
@@ -259,9 +259,9 @@ def bootstrap(args):
 def print_buckets():
     result = str()
     for i in range(len(k_buckets)):
-        result += str(i) + ": "
+        result += str(i) + ":"
         for j in range(len(k_buckets[i])):
-            result += "{}:{}".format(k_buckets[i][j].id, k_buckets[i][j].port)
+            result += " {}:{}".format(k_buckets[i][j].id, k_buckets[i][j].port)
             if j < len(k_buckets[i]) - 1:                   # String formatting
                 result += " "
         if i < len(k_buckets) - 1:
@@ -331,8 +331,7 @@ def find_value(args):
             if value_found:                                 # Handling the output statements for the found value, if it is found/not
                 print("Found value \"{}\" for key {}".format(value, key))
             else:
-                print("Could not find key ".format(key))
-
+                print("Could not find key {}".format(key))
             print("After FIND_VALUE command, k-buckets are:\n" + print_buckets())
 
 #
@@ -437,7 +436,8 @@ def initialize():
     k = int(sys.argv[3])
     hash_table = LRUCache(k)                        # Initializing LRU cache datastructure in LRUCache.py
 
-    my_hostname = socket.gethostname()              # Calculating the hostname with the given parameters
+    #my_hostname = socket.gethostname()              # Calculating the hostname with the given parameters
+    my_hostname = "127.0.0.1"
     my_address = socket.gethostbyname(my_hostname)
 
 
