@@ -28,6 +28,7 @@ my_port = None
 my_hostname = None
 my_address = None
 hash_table = None
+server = None
 
 
 # Server-side ---------------------------------------------------------------------------
@@ -105,6 +106,7 @@ class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
 #
 #
 def serve():
+    global server
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))  # Creates a server with a max 10
     csci4220_hw3_pb2_grpc.add_KadImplServicer_to_server(KadImpl(), server)  # Passes the server to the grpc
     server.add_insecure_port(my_address + ':' + my_port)  # Adds the port
@@ -422,13 +424,17 @@ def execute_quit():
             print("Letting {} know I'm quitting.".format(node.id))                      # notifies each node in the k_buckets
             channel = grpc.insecure_channel("{}:{}".format(node.address, node.port))
             kad = csci4220_hw3_pb2_grpc.KadImplStub(channel)                            # creates a connection to each node
-            kad.Quit(csci4220_hw3_pb2.IDKey(                                            # and calls a quit on THIS node
-                node=csci4220_hw3_pb2.Node(                                             # to other nodes, so they can update
-                    id=local_id,                                                        # their k_buckets
-                    port=int(my_port),
-                    address=my_address),
-                idkey=local_id)
-            )
+            try:
+                kad.Quit(csci4220_hw3_pb2.IDKey(                                            # and calls a quit on THIS node
+                    node=csci4220_hw3_pb2.Node(                                             # to other nodes, so they can update
+                        id=local_id,                                                        # their k_buckets
+                        port=int(my_port),
+                        address=my_address),
+                    idkey=local_id)
+                )
+            except grpc.RpcError:
+                pass
+    server.stop(0)
     print("Shut down node {}".format(local_id))                                         # Outputs to the console
 
 
