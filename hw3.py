@@ -135,10 +135,15 @@ def store(args):
         kad = csci4220_hw3_pb2_grpc.KadImplStub(channel)
 
         kad.Store(csci4220_hw3_pb2.KeyValue(
-            node=closest_node,
+            node=csci4220_hw3_pb2.Node(
+                id=local_id,
+                port=int(my_port),
+                address=my_address
+            ),
             key=key,
             value=value
         ))
+
 
 # Remove node of specified id
 # If node does not exist, returns -1
@@ -157,6 +162,7 @@ def remove_node(node_id):
     k_buckets[index].pop(position)
     return index
 
+
 # Store a node in the correct bucket
 # Note: Head of the list is the last index
 def save_node(node):
@@ -172,6 +178,8 @@ def save_node(node):
 
         if val > xor:
             exp -= 1
+    else:
+        return
 
     exists = False
     existing_idx = 0
@@ -231,7 +239,6 @@ def bootstrap(args):
 
     # Save nodes learned from bootstrap node
     for node in response.nodes:
-        print("NODE: {}".format(node.id))
         save_node(node)
 
     # Save bootstrap node
@@ -297,7 +304,11 @@ def find_value(args):
                 kad = csci4220_hw3_pb2_grpc.KadImplStub(channel)
                 response = kad.FindValue(                   # Create a connection to that node
                     csci4220_hw3_pb2.IDKey(
-                        node=node,
+                        node=csci4220_hw3_pb2.Node(
+                            id=local_id,
+                            port=int(my_port),
+                            address=my_address
+                        ),
                         idkey=key
                     )
                 )
@@ -386,6 +397,7 @@ def find_node(args):
         else:
             print("Could not find destination id ".format(node_id))
 
+
 #
 # execute_quit()
 # Terminates the current node (the client)
@@ -427,6 +439,7 @@ def initialize():
 
     my_hostname = socket.gethostname()              # Calculating the hostname with the given parameters
     my_address = socket.gethostbyname(my_hostname)
+
 
 #
 # run()
