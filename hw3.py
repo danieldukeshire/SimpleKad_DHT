@@ -205,14 +205,17 @@ def find_k_closest(id_key):
         nodes.append(item[0])
     return nodes
 
-
+#
 # bootStrap()
 # Takes args: the input string from the console
+# This command lets a node connect to another node by exchanging information so that both nodes know each
+# other’s ID, address, and port. This is done by sending the remote node a FindNode RPC using the local
+# node’s ID as the argument.
 #
 def bootstrap(args):
-    hostname = args.split()[1]  # Gettting the hostname from input
-    port = args.split()[2]  # Getting the port from input
-    address = socket.gethostbyname(hostname)  # Getting the hostname
+    hostname = args.split()[1]                                      # Gettting the hostname from input
+    port = args.split()[2]                                          # Getting the port from input
+    address = socket.gethostbyname(hostname)                        # Getting the hostname
 
     channel = grpc.insecure_channel("{}:{}".format(address, port))
     kad = csci4220_hw3_pb2_grpc.KadImplStub(channel)
@@ -237,21 +240,27 @@ def bootstrap(args):
     print("After BOOTSTRAP({}), k_buckets now look like:\n{}".format(response.responding_node.id, print_buckets()))
 
 
+#
+# print_buckets()
+# Prints the current k_buckets array in the format specified in the pdf
+# Format:
+# 0: 1: 9001 0:5001
+# 1:
+# 2:
+# 3:
+#
 def print_buckets():
     result = str()
     for i in range(len(k_buckets)):
-        result += str(i) + " ["
+        result += str(i) + ": "
         for j in range(len(k_buckets[i])):
             result += "{}:{}".format(k_buckets[i][j].id, k_buckets[i][j].port)
-            if j < len(k_buckets[i]) - 1:
+            if j < len(k_buckets[i]) - 1:                   # String formatting
                 result += " "
         if i < len(k_buckets) - 1:
-            result += "]\n"
-        else:
-            result += "]"
+            result += "\n"
 
     return result
-
 
 #
 # findValue()
@@ -267,13 +276,13 @@ def find_value(args):
     print("Before FIND_VALUE command, k-buckets are:\n{}".format(print_buckets()))
 
     key = int(args.split()[1])                              # Getting value from the input
-    if hash_table.contains_key(key):
+    if hash_table.contains_key(key):                        # the hash table is where we keep the key value pairs
         print("Found data \"{}\" for key {}".format(hash_table.get(key), key))
         return
     else:
-        unvisited = find_k_closest(key)
+        unvisited = find_k_closest(key)                     #  if we dont have the value in out hash ...
         visited = list()
-        visited.append(csci4220_hw3_pb2.Node(
+        visited.append(csci4220_hw3_pb2.Node(               # we need to loop over the k closest nodes, similar to findnode
                 id=local_id,
                 port=int(my_port),
                 address=my_address
@@ -282,35 +291,33 @@ def find_value(args):
 
         value_found = False
         value = None
-
-        while len(unvisited) > 0 and not value_found:
+        while len(unvisited) > 0 and not value_found:       # Now, we loop over all of the unvisited nodes
             for node in unvisited:
                 channel = grpc.insecure_channel("{}:{}".format(node.address, node.port))
                 kad = csci4220_hw3_pb2_grpc.KadImplStub(channel)
-
-                response = kad.FindValue(
+                response = kad.FindValue(                   # Create a connection to that node
                     csci4220_hw3_pb2.IDKey(
                         node=node,
                         idkey=key
                     )
                 )
-                save_node(node)
-                visited.append(node)
+                save_node(node)                             # Save it, as it needs to be updated based on LRU
+                visited.append(node)                        # And we add it to the visited nodes array
 
                 if response.mode_kv:
                     value = response.kv.value
                     value_found = True
                     break
 
-                for resp_node in response.nodes:
-                    if not node_is_stored(resp_node) and resp_node.id != local_id:
+                for resp_node in response.nodes:            # If we havent found the value in our direct k_buckets....
+                    if not node_is_stored(resp_node) and resp_node.id != local_id:      # We look in each node's k_buckets
                         save_node(resp_node)
                     if resp_node not in visited:
                         next_visit.append(resp_node)
             unvisited = next_visit
             next_visit = []
 
-            if value_found:
+            if value_found:                                 # Handling the output statements for the found value, if it is found/not
                 print("Found value \"{}\" for key {}".format(value, key))
             else:
                 print("Could not find key ".format(key))
@@ -373,9 +380,8 @@ def find_node(args):
         unvisited = next_visit
         next_visit = []
 
-        # Handling the computed node / no node found messages
         print("After FIND_NODE command, k-buckets are:\n" + print_buckets())
-        if node_found:
+        if node_found:                                  # Handling the computed node / no node found messages
             print("Found destination id {}".format(node_id))
         else:
             print("Could not find destination id ".format(node_id))
