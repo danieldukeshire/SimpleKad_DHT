@@ -64,6 +64,8 @@ class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
         else:
             nodes = find_k_closest(request.idkey)
 
+        save_node(request.node)
+
         return csci4220_hw3_pb2.KV_Node_Wrapper(
             responding_node=csci4220_hw3_pb2.Node(
                 id=local_id,
@@ -80,7 +82,7 @@ class KadImpl(csci4220_hw3_pb2_grpc.KadImplServicer):
         )
 
     def Store(self, request, context):
-        print("Storing key {} at value \"{}\"".format(request.key, request.value))
+        print("Storing key {} value \"{}\"".format(request.key, request.value))
         hash_table.put(request.key, request.value)
         save_node(request.node)
         # Need to return something, but this isn't used
@@ -127,7 +129,7 @@ def store(args):
     closest_node = None if len(k_closest) < 1 else k_closest[0]
 
     if closest_node is None or key ^ local_id < key ^ closest_node.id:
-        print("Storing key {} at node \"{}\"".format(key, local_id))
+        print("Storing key {} at node {}".format(key, local_id))
         hash_table.put(key, value)
     else:
         print("Storing key {} at node {}".format(key, closest_node.id))
@@ -331,11 +333,11 @@ def find_value(args):
             unvisited = next_visit
             next_visit = []
 
-            if value_found:                                 # Handling the output statements for the found value, if it is found/not
-                print("Found value \"{}\" for key {}".format(value, key))
-            else:
-                print("Could not find key {}".format(key))
-            print("After FIND_VALUE command, k-buckets are:\n" + print_buckets())
+        if value_found:                                 # Handling the output statements for the found value, if it is found/not
+            print("Found value \"{}\" for key {}".format(value, key))
+        else:
+            print("Could not find key {}".format(key))
+        print("After FIND_VALUE command, k-buckets are:\n" + print_buckets())
 
 
 #
