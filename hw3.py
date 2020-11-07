@@ -302,7 +302,6 @@ def find_value(args):
                 port=int(my_port),
                 address=my_address
             ))
-        next_visit = []
 
         value_found = False
         value = None
@@ -331,10 +330,11 @@ def find_value(args):
                 for resp_node in response.nodes:            # If we havent found the value in our direct k_buckets....
                     if not node_is_stored(resp_node) and resp_node.id != local_id:      # We look in each node's k_buckets
                         save_node(resp_node)
-                    if resp_node not in visited:
-                        next_visit.append(resp_node)
-            unvisited = next_visit
-            next_visit = []
+            # Look for any unvisited nodes and add them for next iteration
+            unvisited = []
+            for node in find_k_closest(key):
+                if node not in visited:
+                    unvisited.append(node)
 
         if value_found:                                 # Handling the output statements for the found value, if it is found/not
             print("Found value \"{}\" for key {}".format(value, key))
