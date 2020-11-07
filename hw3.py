@@ -401,8 +401,11 @@ def find_node(args):
                     node_found = True
             if node_found:
                 break
-        unvisited = next_visit
-        next_visit = []
+        # Look for any unvisited nodes and add them for next iteration
+        unvisited = []
+        for node in find_k_closest(node_id):
+            if node not in visited:
+                unvisited.append(node)
 
         if node_found:                                  # Handling the computed node / no node found messages
             print("Found destination id {}".format(node_id))
